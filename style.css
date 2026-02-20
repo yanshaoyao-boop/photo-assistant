@@ -232,7 +232,8 @@ body {
     color: #ffd32a;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     white-space: nowrap;
-    z-index: 90;
+    z-index: 200;
+    pointer-events: none;
     animation: slide-up 0.5s ease;
 }
 
@@ -257,7 +258,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    z-index: 80;
+    z-index: 200;
+    pointer-events: auto;
 }
 
 .icon-btn {
@@ -306,7 +308,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    z-index: 80;
+    z-index: 200;
+    pointer-events: auto;
     animation: fade-in 0.3s ease;
 }
 
