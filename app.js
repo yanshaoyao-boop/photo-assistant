@@ -7,10 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridOverlay = document.getElementById('grid-overlay');
 
     const silhouetteOverlay = document.getElementById('silhouette-overlay');
-    const silhouetteImage = document.getElementById('silhouette-image');
+    const silhouetteSvg = document.getElementById('silhouette-svg');
     const modeBtns = document.querySelectorAll('.mode-btn');
 
-    const levelIndicator = document.getElementById('level-indicator');
     const levelLine = document.querySelector('.level-line');
     const levelText = document.querySelector('.level-text');
     const angleWarning = document.getElementById('angle-warning');
@@ -22,32 +21,130 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('capture-canvas');
     const ctx = canvas.getContext('2d');
 
-    // 新增元素
     const filterDrawer = document.getElementById('filter-drawer');
     const toggleFilterBtn = document.getElementById('toggle-filter-btn');
     const filterOpts = document.querySelectorAll('.filter-opt');
     const zoomControls = document.getElementById('zoom-controls');
     const zoomBtns = document.querySelectorAll('.zoom-btn');
     const poseTip = document.getElementById('pose-tip');
+    const timerBtn = document.getElementById('timer-btn');
+    const timerDisplay = document.getElementById('timer-display');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownNumber = document.getElementById('countdown-number');
+    const shutterFlash = document.getElementById('shutter-flash');
+    const tipsRefreshBtn = document.getElementById('tips-refresh-btn');
 
     // ---- 状态与变量 ----
     let currentStream = null;
     let currentTrack = null;
-    let facingMode = 'environment'; // 默认后置
-    let currentFilter = 'none'; // 当前滤镜
+    let facingMode = 'environment';
+    let currentFilter = 'none';
+    let timerSeconds = 0; // 0 = 无倒计时
 
-    // Base64 SVGs to act as silhouettes
-    // 全身：一个火柴人/简单的人体轮廓
-    const svgFullBody = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="white" stroke-width="2" stroke-dasharray="4" opacity="0.8"><ellipse cx="50" cy="30" rx="15" ry="20"/><path d="M50 50 v70 M50 70 L20 120 M50 70 L80 120 M50 120 L30 190 M50 120 L70 190"/></svg>`;
-    // 半身：上半身轮廓
-    const svgHalfBody = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="white" stroke-width="2" stroke-dasharray="4" opacity="0.8"><ellipse cx="50" cy="50" rx="20" ry="25"/><path d="M50 75 v125 M50 90 L10 150 M50 90 L90 150"/></svg>`;
-    // 特写：面部和肩膀
-    const svgCloseUp = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200" fill="none" stroke="white" stroke-width="2" stroke-dasharray="4" opacity="0.8"><ellipse cx="50" cy="80" rx="35" ry="45"/><path d="M15 125 q 35 20 70 0 q 10 50 -10 75 h-50 q -20 -25 -10 -75"/></svg>`;
+    // ---- 姿势指导语库 ----
+    const poseTips = {
+        'full': [
+            "稍微仰拍，脚贴近画面底部，显腿长",
+            "让她一只脚微微向前迈半步，身体微侧",
+            "假装往前走，不经意回头看你",
+            "站在台阶上，你蹲下从下往上拍",
+            "背对你走几步，然后自然回头",
+            "一只手自然下垂，一只手轻扶帽沿或发梢",
+            "侧身站，眼睛看向远方，露出侧脸轮廓",
+            "让她走向你，每步稍慢，抓拍自然步伐"
+        ],
+        'half': [
+            "让她自然回头，眼神不看镜头",
+            "用手轻轻拨一下头发，抓那个瞬间",
+            "手托下巴，微微歪头，看向窗外",
+            "闭上眼深呼吸，表情放松自然",
+            "假装看手机笑一下，你抓拍侧脸",
+            "双手捧着咖啡杯或花束，低头微笑",
+            "坐下来侧身，双手撑在身后",
+            "靠在墙上，一只手插口袋，看向远处"
+        ],
+        'close': [
+            "用手托腮或挡脸，避免面部僵硬",
+            "把花或树叶举到脸旁边当道具",
+            "闭眼假装闻花香，等她微笑再拍",
+            "用围巾或领口遮住下半脸，只露眼睛",
+            "双手比心放在脸旁，俏皮一点",
+            "趴在桌面上，双手交叉垫在下巴下",
+            "戴上墨镜，嘴角微微上扬",
+            "逆光时让阳光打在头发上，形成光晕"
+        ]
+    };
 
-    const silhouettes = {
-        'full': svgFullBody,
-        'half': svgHalfBody,
-        'close': svgCloseUp
+    // ---- 精美女性剪影 SVG ----
+    const silhouetteSVGs = {
+        'full': `
+            <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="6 3" fill="none">
+                <!-- 头部 -->
+                <ellipse cx="100" cy="60" rx="22" ry="28"/>
+                <!-- 长发 -->
+                <path d="M78 55 Q70 80 75 110"/>
+                <path d="M122 55 Q130 80 125 110"/>
+                <!-- 脖子 -->
+                <path d="M93 88 L93 105"/>
+                <path d="M107 88 L107 105"/>
+                <!-- 肩膀和上身 -->
+                <path d="M93 105 Q60 110 55 130"/>
+                <path d="M107 105 Q140 110 145 130"/>
+                <!-- 身体曲线 -->
+                <path d="M55 130 Q58 180 65 210 Q70 240 68 270"/>
+                <path d="M145 130 Q142 180 135 210 Q130 240 132 270"/>
+                <!-- 裙摆 -->
+                <path d="M68 270 Q60 320 45 380"/>
+                <path d="M132 270 Q140 320 155 380"/>
+                <path d="M68 270 Q90 290 100 380"/>
+                <path d="M132 270 Q110 290 100 380"/>
+                <!-- 腿 -->
+                <path d="M75 380 L70 460"/>
+                <path d="M125 380 L130 460"/>
+                <!-- 手臂 -->
+                <path d="M55 130 Q40 170 45 210"/>
+                <path d="M145 130 Q155 155 150 180"/>
+            </g>`,
+        'half': `
+            <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="6 3" fill="none" transform="translate(0, 60)">
+                <!-- 头部 -->
+                <ellipse cx="100" cy="80" rx="28" ry="35"/>
+                <!-- 长发 -->
+                <path d="M72 75 Q62 110 68 160"/>
+                <path d="M128 75 Q138 110 132 160"/>
+                <!-- 脖子 -->
+                <path d="M90 115 L90 135"/>
+                <path d="M110 115 L110 135"/>
+                <!-- 肩膀 -->
+                <path d="M90 135 Q50 140 35 165"/>
+                <path d="M110 135 Q150 140 165 165"/>
+                <!-- 身体 -->
+                <path d="M35 165 Q40 230 50 300"/>
+                <path d="M165 165 Q160 230 150 300"/>
+                <!-- 手臂 -->
+                <path d="M35 165 Q20 210 30 260"/>
+                <path d="M165 165 Q175 195 165 230"/>
+                <!-- 手指 (托腮姿势) -->
+                <path d="M165 230 Q155 220 140 200 Q130 180 120 170"/>
+            </g>`,
+        'close': `
+            <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="6 3" fill="none" transform="translate(0, 50)">
+                <!-- 脸部轮廓 -->
+                <ellipse cx="100" cy="150" rx="50" ry="65"/>
+                <!-- 长发 -->
+                <path d="M50 140 Q35 170 40 240"/>
+                <path d="M150 140 Q165 170 160 240"/>
+                <path d="M55 120 Q45 100 55 80 Q70 60 100 55 Q130 60 145 80 Q155 100 145 120"/>
+                <!-- 肩膀 -->
+                <path d="M60 210 Q40 225 15 250"/>
+                <path d="M140 210 Q160 225 185 250"/>
+                <!-- 上身区域 -->
+                <path d="M15 250 Q20 310 30 380"/>
+                <path d="M185 250 Q180 310 170 380"/>
+                <!-- 手臂(托腮) -->
+                <path d="M15 250 Q10 280 20 320"/>
+                <path d="M185 250 Q170 260 155 240 Q140 220 130 200"/>
+            </g>`
     };
 
     // ---- 摄像头逻辑 ----
@@ -80,10 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 zoomControls.classList.add('hidden');
             }
 
-            // Wait for video to load metadata to setup canvas dimensions correctly
-            video.onloadedmetadata = () => {
-                video.play();
-            };
+            video.onloadedmetadata = () => { video.play(); };
             return true;
         } catch (err) {
             console.error('无法访问摄像头:', err);
@@ -93,76 +187,84 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 翻转镜头
     switchBtn.addEventListener('click', () => {
         facingMode = facingMode === 'environment' ? 'user' : 'environment';
         initCamera();
     });
 
-    // ---- UI 交互逻辑 ----
-
-    // 九宫格切换
+    // ---- 九宫格切换 ----
     gridToggleBtn.addEventListener('click', () => {
         gridOverlay.classList.toggle('hidden');
         gridToggleBtn.classList.toggle('active');
     });
 
-    // 蒙版与Pose选择
+    // ---- 蒙版与Pose选择 ----
+    function showRandomTip(mode) {
+        if (poseTips[mode]) {
+            const tips = poseTips[mode];
+            const randomTip = tips[Math.floor(Math.random() * tips.length)];
+            poseTip.querySelector('span').innerText = "💡 " + randomTip;
+            poseTip.classList.remove('hidden');
+            // 重新触发动画
+            poseTip.style.animation = 'none';
+            poseTip.offsetHeight; // 强制回流
+            poseTip.style.animation = '';
+        } else {
+            poseTip.classList.add('hidden');
+        }
+    }
+
     modeBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // 移除所有激活状态
             modeBtns.forEach(b => b.classList.remove('active'));
-            // 激活当前
             e.target.classList.add('active');
 
             const mode = e.target.getAttribute('data-mode');
-            const tipText = e.target.getAttribute('data-tip');
 
             // 蒙版显示
             if (mode === 'none') {
                 silhouetteOverlay.classList.add('hidden');
-            } else {
-                silhouetteImage.src = silhouettes[mode];
-                silhouetteOverlay.classList.remove('hidden');
-            }
-
-            // 提示语显示
-            if (tipText) {
-                poseTip.querySelector('span').innerText = "💡 提示：" + tipText;
-                poseTip.classList.remove('hidden');
-            } else {
                 poseTip.classList.add('hidden');
+            } else {
+                silhouetteSvg.innerHTML = silhouetteSVGs[mode] || '';
+                silhouetteOverlay.classList.remove('hidden');
+                showRandomTip(mode);
             }
         });
     });
 
-    // 滤镜抽屉开关
+    // 刷新提示语
+    tipsRefreshBtn.addEventListener('click', () => {
+        const activeMode = document.querySelector('.mode-btn.active').getAttribute('data-mode');
+        if (activeMode !== 'none') {
+            showRandomTip(activeMode);
+        }
+    });
+
+    // ---- 滤镜 ----
     toggleFilterBtn.addEventListener('click', () => {
         filterDrawer.classList.toggle('hidden');
     });
 
-    // 滤镜选择
     filterOpts.forEach(btn => {
         btn.addEventListener('click', (e) => {
             filterOpts.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-
             currentFilter = e.target.getAttribute('data-filter');
             video.style.filter = currentFilter === 'none' ? '' : currentFilter;
         });
     });
 
-    // 变焦控制
+    // ---- 变焦控制 ----
     zoomBtns.forEach(btn => {
         btn.addEventListener('click', async (e) => {
             zoomBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-
             if (currentTrack && currentTrack.applyConstraints) {
                 const zoomValue = Number(e.target.getAttribute('data-zoom'));
                 try {
-                    await currentTrack.applyConstraints({
-                        advanced: [{ zoom: zoomValue }]
-                    });
+                    await currentTrack.applyConstraints({ advanced: [{ zoom: zoomValue }] });
                 } catch (err) {
                     console.log('变焦失败或不被支持', err);
                 }
@@ -170,28 +272,62 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ---- 陀螺仪 / 传感器逻辑 (防短腿 + 水平仪) ----
+    // ---- 倒计时自拍 ----
+    const timerOptions = [0, 3, 5, 10];
+    let timerIndex = 0;
+
+    timerBtn.addEventListener('click', () => {
+        timerIndex = (timerIndex + 1) % timerOptions.length;
+        timerSeconds = timerOptions[timerIndex];
+        if (timerSeconds === 0) {
+            timerBtn.textContent = '⏱️';
+            timerBtn.classList.remove('active');
+            timerDisplay.classList.add('hidden');
+        } else {
+            timerBtn.textContent = timerSeconds + 's';
+            timerBtn.classList.add('active');
+            timerDisplay.textContent = '⏱️ ' + timerSeconds + '秒后拍照';
+            timerDisplay.classList.remove('hidden');
+        }
+    });
+
+    function runCountdown(seconds) {
+        return new Promise(resolve => {
+            countdownOverlay.classList.remove('hidden');
+            let remaining = seconds;
+
+            function tick() {
+                countdownNumber.textContent = remaining;
+                // 重新触发动画
+                countdownNumber.style.animation = 'none';
+                countdownNumber.offsetHeight;
+                countdownNumber.style.animation = '';
+
+                if (remaining <= 0) {
+                    countdownOverlay.classList.add('hidden');
+                    resolve();
+                    return;
+                }
+                remaining--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+        });
+    }
+
+    // ---- 陀螺仪 / 传感器逻辑 ----
     function handleOrientation(event) {
-        // beta 是俯仰角: -180 到 180 (绕 x 轴)
-        // gamma 是左右倾斜角: -90 到 90 (绕 y 轴)
         let pitch = event.beta;
         let roll = event.gamma;
-
         if (pitch === null || roll === null) return;
 
-        // --- 水平仪逻辑 ---
-        // 我们要避免画面歪斜，也就是关注 roll (左右倾斜角度)
-        // 手机横排和竖拍可能会导致获取的值不同。这里假设默认竖屏拍摄。
-
-        let tilt = roll; // 竖屏下，手机左右翻滚角度
-
-        // 视觉呈现：画一条线。tilt接近0时，线变绿。
+        let tilt = roll;
         levelLine.style.transform = `rotate(${tilt}deg)`;
 
         if (Math.abs(tilt) < 3) {
             levelLine.classList.add('aligned');
             levelLine.style.background = "#2ed573";
-            levelText.textContent = "保持水平 - 完美！";
+            levelText.textContent = "✓ 水平完美";
             levelText.style.color = "#2ed573";
         } else {
             levelLine.classList.remove('aligned');
@@ -200,11 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             levelText.style.color = "#ff4757";
         }
 
-        // --- 俯拍小短腿警告 (全身照模式下适用) ---
-        // 手机垂直拿时 beta 约 90。如果是俯拍（往下看），beta 会小于80甚至更低。
         const activeMode = document.querySelector('.mode-btn.active').getAttribute('data-mode');
-
-        // 为了显腿长，一般来说应该稍微仰拍。如果beta < 75（往地下拍），警告！
         if ((activeMode === 'full' || activeMode === 'half') && pitch > 0 && pitch < 75) {
             angleWarning.classList.remove('hidden');
         } else {
@@ -212,25 +344,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 申请传感器权限并监听 (iOS 13+ 需要用户行为触发)
     async function setupSensors() {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
             try {
                 const permissionState = await DeviceOrientationEvent.requestPermission();
                 if (permissionState === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientation);
-                } else {
-                    console.log("传感器权限被拒绝");
                 }
             } catch (e) {
                 console.log("传感器权限请求出错: ", e);
             }
         } else {
-            // 非 iOS 13+ 或不支持
             window.addEventListener('deviceorientation', handleOrientation);
         }
     }
 
+    // ---- 启动授权 ----
     const startBtn = document.getElementById('start-btn');
     const startScreen = document.getElementById('start-screen');
 
@@ -238,39 +367,49 @@ document.addEventListener('DOMContentLoaded', () => {
         startBtn.addEventListener('click', async () => {
             const errorLog = document.getElementById('error-log');
             errorLog.innerText = "正在请求摄像头权限...";
-
             await setupSensors();
             const camReady = await initCamera();
-
             if (camReady) {
                 startScreen.style.display = 'none';
             }
         });
     }
 
+    // ---- 快门效果 & 拍照逻辑 ----
+    function triggerShutter() {
+        // 震动反馈
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+        // 闪光效果
+        shutterFlash.classList.remove('hidden');
+        setTimeout(() => shutterFlash.classList.add('hidden'), 350);
+    }
 
-    // ---- 拍照及下载逻辑 ----
-    captureBtn.addEventListener('click', () => {
-        // 设置Canvas长宽与视频帧长宽匹配
+    function takePhoto() {
+        triggerShutter();
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        // 如果有滤镜，应用到 Canvas 上下文中
         if (currentFilter !== 'none') {
             ctx.filter = currentFilter;
         } else {
             ctx.filter = 'none';
         }
 
-        // 将视频画面画入Canvas
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // 转为 data URL 显示到预览图
-        const dataUrl = canvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         photoPreview.src = dataUrl;
-
-        // 显示预览层
         photoPreviewLayer.classList.remove('hidden');
+    }
+
+    captureBtn.addEventListener('click', async () => {
+        if (timerSeconds > 0) {
+            await runCountdown(timerSeconds);
+        }
+        takePhoto();
     });
 
     retakeBtn.addEventListener('click', () => {
@@ -279,12 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveBtn.addEventListener('click', () => {
         const link = document.createElement('a');
-        link.download = `老公视角_完美出片_${new Date().getTime()}.png`;
+        link.download = `完美出片_${new Date().getTime()}.jpg`;
         link.href = photoPreview.src;
         link.click();
         photoPreviewLayer.classList.add('hidden');
-        alert("照片已保存入相册/下载列表！");
     });
-
-    // ---- 系统通过用户点击启动 ----
 });
