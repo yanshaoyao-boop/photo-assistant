@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>老公拍照辅助器 - 拯救废片</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- 摄像头画面容器 -->
+        <div class="camera-wrapper">
+            <video id="camera-feed" autoplay playsinline></video>
+            
+            <!-- 叠加层：九宫格 -->
+            <div id="grid-overlay" class="overlay">
+                <div class="grid-line vertical line-1"></div>
+                <div class="grid-line vertical line-2"></div>
+                <div class="grid-line horizontal line-1"></div>
+                <div class="grid-line horizontal line-2"></div>
+                <!-- 黄金交叉点 -->
+                <div class="grid-point p1"></div>
+                <div class="grid-point p2"></div>
+                <div class="grid-point p3"></div>
+                <div class="grid-point p4"></div>
+            </div>
+
+            <!-- 叠加层：辅助蒙版图 -->
+            <div id="silhouette-overlay" class="overlay hidden">
+                <img id="silhouette-image" src="" alt="辅助轮廓">
+            </div>
+
+            <!-- 水平仪 (动态UI) -->
+            <div id="level-indicator" class="overlay">
+                <div class="level-line"></div>
+                <div class="level-text">正在校准...</div>
+            </div>
+            
+            <!-- 闪烁警告框 (防俯拍小短腿) -->
+            <div id="angle-warning" class="hidden">
+                <span class="warning-text">⚠️ 手机太往下啦，容易拍出小短腿！稍微往下蹲仰拍！</span>
+            </div>
+        </div>
+
+        <!-- 底部控制栏 -->
+        <div class="controls-bar">
+            <div class="modes">
+                <button class="mode-btn active" data-mode="none">无蒙版</button>
+                <button class="mode-btn" data-mode="full">全身(显高)</button>
+                <button class="mode-btn" data-mode="half">半身(人像)</button>
+                <button class="mode-btn" data-mode="close">特写(五官)</button>
+            </div>
+            
+            <div class="actions">
+                <button id="camera-switch-btn" class="action-btn">🔄 翻转镜头</button>
+                <button id="capture-btn" class="capture-btn">
+                    <div class="inner-circle"></div>
+                </button>
+                <button id="grid-toggle-btn" class="action-btn active"># 九宫格贴</button>
+            </div>
+        </div>
+
+        <!-- 拍照后的预览和保存层 -->
+        <div id="photo-preview-layer" class="hidden">
+            <img id="photo-preview" src="" alt="照片预览">
+            <div class="preview-actions">
+                <button id="retake-btn">重拍</button>
+                <button id="save-btn">保存到相册</button>
+            </div>
+        </div>
+        
+        <!-- 隐藏的Canvas用于截图 -->
+        <canvas id="capture-canvas" class="hidden"></canvas>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
