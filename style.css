@@ -215,11 +215,18 @@ body {
 }
 
 /* ========= 人像剪影蒙版 ========= */
-.silhouette-svg {
-    width: 100%;
-    height: 100%;
+.silhouette-layer {
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.silhouette-img {
+    height: 85%;
+    max-width: 60%;
     object-fit: contain;
-    opacity: 0.5;
+    opacity: 0.55;
     filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
     animation: silhouette-in 0.5s ease;
 }
@@ -231,7 +238,7 @@ body {
     }
 
     to {
-        opacity: 0.5;
+        opacity: 0.55;
         transform: scale(1);
     }
 }

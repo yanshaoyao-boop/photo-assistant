@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridOverlay = document.getElementById('grid-overlay');
 
     const silhouetteOverlay = document.getElementById('silhouette-overlay');
-    const silhouetteSvg = document.getElementById('silhouette-svg');
+    const silhouetteImg = document.getElementById('silhouette-img');
     const modeBtns = document.querySelectorAll('.mode-btn');
 
     const levelLine = document.querySelector('.level-line');
@@ -75,76 +75,61 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     };
 
-    // ---- 精美女性剪影 SVG ----
-    const silhouetteSVGs = {
-        'full': `
-            <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="6 3" fill="none">
-                <!-- 头部 -->
+    // ---- 精美女性剪影 SVG data URI ----
+    function makeSvgDataUri(svgContent) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 500" fill="none">${svgContent}</svg>`;
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    const silhouetteDataURIs = {
+        'full': makeSvgDataUri(`
+            <g stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-dasharray="6 3" fill="none">
                 <ellipse cx="100" cy="60" rx="22" ry="28"/>
-                <!-- 长发 -->
                 <path d="M78 55 Q70 80 75 110"/>
                 <path d="M122 55 Q130 80 125 110"/>
-                <!-- 脖子 -->
                 <path d="M93 88 L93 105"/>
                 <path d="M107 88 L107 105"/>
-                <!-- 肩膀和上身 -->
                 <path d="M93 105 Q60 110 55 130"/>
                 <path d="M107 105 Q140 110 145 130"/>
-                <!-- 身体曲线 -->
                 <path d="M55 130 Q58 180 65 210 Q70 240 68 270"/>
                 <path d="M145 130 Q142 180 135 210 Q130 240 132 270"/>
-                <!-- 裙摆 -->
                 <path d="M68 270 Q60 320 45 380"/>
                 <path d="M132 270 Q140 320 155 380"/>
                 <path d="M68 270 Q90 290 100 380"/>
                 <path d="M132 270 Q110 290 100 380"/>
-                <!-- 腿 -->
                 <path d="M75 380 L70 460"/>
                 <path d="M125 380 L130 460"/>
-                <!-- 手臂 -->
                 <path d="M55 130 Q40 170 45 210"/>
                 <path d="M145 130 Q155 155 150 180"/>
-            </g>`,
-        'half': `
-            <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="6 3" fill="none" transform="translate(0, 60)">
-                <!-- 头部 -->
+            </g>`),
+        'half': makeSvgDataUri(`
+            <g stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-dasharray="6 3" fill="none" transform="translate(0, 60)">
                 <ellipse cx="100" cy="80" rx="28" ry="35"/>
-                <!-- 长发 -->
                 <path d="M72 75 Q62 110 68 160"/>
                 <path d="M128 75 Q138 110 132 160"/>
-                <!-- 脖子 -->
                 <path d="M90 115 L90 135"/>
                 <path d="M110 115 L110 135"/>
-                <!-- 肩膀 -->
                 <path d="M90 135 Q50 140 35 165"/>
                 <path d="M110 135 Q150 140 165 165"/>
-                <!-- 身体 -->
                 <path d="M35 165 Q40 230 50 300"/>
                 <path d="M165 165 Q160 230 150 300"/>
-                <!-- 手臂 -->
                 <path d="M35 165 Q20 210 30 260"/>
                 <path d="M165 165 Q175 195 165 230"/>
-                <!-- 手指 (托腮姿势) -->
                 <path d="M165 230 Q155 220 140 200 Q130 180 120 170"/>
-            </g>`,
-        'close': `
-            <g stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="6 3" fill="none" transform="translate(0, 50)">
-                <!-- 脸部轮廓 -->
+            </g>`),
+        'close': makeSvgDataUri(`
+            <g stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-dasharray="6 3" fill="none" transform="translate(0, 50)">
                 <ellipse cx="100" cy="150" rx="50" ry="65"/>
-                <!-- 长发 -->
                 <path d="M50 140 Q35 170 40 240"/>
                 <path d="M150 140 Q165 170 160 240"/>
                 <path d="M55 120 Q45 100 55 80 Q70 60 100 55 Q130 60 145 80 Q155 100 145 120"/>
-                <!-- 肩膀 -->
                 <path d="M60 210 Q40 225 15 250"/>
                 <path d="M140 210 Q160 225 185 250"/>
-                <!-- 上身区域 -->
                 <path d="M15 250 Q20 310 30 380"/>
                 <path d="M185 250 Q180 310 170 380"/>
-                <!-- 手臂(托腮) -->
                 <path d="M15 250 Q10 280 20 320"/>
                 <path d="M185 250 Q170 260 155 240 Q140 220 130 200"/>
-            </g>`
+            </g>`)
     };
 
     // ---- 摄像头逻辑 ----
@@ -227,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 silhouetteOverlay.classList.add('hidden');
                 poseTip.classList.add('hidden');
             } else {
-                silhouetteSvg.innerHTML = silhouetteSVGs[mode] || '';
+                silhouetteImg.src = silhouetteDataURIs[mode];
                 silhouetteOverlay.classList.remove('hidden');
                 showRandomTip(mode);
             }
@@ -416,11 +401,36 @@ document.addEventListener('DOMContentLoaded', () => {
         photoPreviewLayer.classList.add('hidden');
     });
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
+        // 尝试用 Web Share API 分享保存（手机上会弹出原生分享面板，包含"保存图片"）
+        try {
+            const response = await fetch(photoPreview.src);
+            const blob = await response.blob();
+            const file = new File([blob], `完美出片_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: '老公拍照辅助器 - 完美出片',
+                });
+                photoPreviewLayer.classList.add('hidden');
+            } else {
+                // 不支持 Share API 时回退到下载
+                fallbackDownload();
+            }
+        } catch (err) {
+            // 用户取消分享或出错时回退到下载
+            if (err.name !== 'AbortError') {
+                fallbackDownload();
+            }
+        }
+    });
+
+    function fallbackDownload() {
         const link = document.createElement('a');
-        link.download = `完美出片_${new Date().getTime()}.jpg`;
+        link.download = `完美出片_${Date.now()}.jpg`;
         link.href = photoPreview.src;
         link.click();
         photoPreviewLayer.classList.add('hidden');
-    });
+    }
 });
