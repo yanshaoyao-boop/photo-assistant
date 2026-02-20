@@ -22,9 +22,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('capture-canvas');
     const ctx = canvas.getContext('2d');
 
+    // 新增元素
+    const filterDrawer = document.getElementById('filter-drawer');
+    const toggleFilterBtn = document.getElementById('toggle-filter-btn');
+    const filterOpts = document.querySelectorAll('.filter-opt');
+    const zoomControls = document.getElementById('zoom-controls');
+    const zoomBtns = document.querySelectorAll('.zoom-btn');
+    const poseTip = document.getElementById('pose-tip');
+
     // ---- 状态与变量 ----
     let currentStream = null;
+    let currentTrack = null;
     let facingMode = 'environment'; // 默认后置
+    let currentFilter = 'none'; // 当前滤镜
 
     // Base64 SVGs to act as silhouettes
     // 全身：一个火柴人/简单的人体轮廓
@@ -60,6 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
             currentStream = stream;
             video.srcObject = stream;
 
+            // 处理变焦能力
+            const track = stream.getVideoTracks()[0];
+            currentTrack = track;
+            const capabilities = track.getCapabilities ? track.getCapabilities() : null;
+            if (capabilities && capabilities.zoom) {
+                zoomControls.classList.remove('hidden');
+            } else {
+                zoomControls.classList.add('hidden');
+            }
+
             // Wait for video to load metadata to setup canvas dimensions correctly
             video.onloadedmetadata = () => {
                 video.play();
@@ -86,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gridToggleBtn.classList.toggle('active');
     });
 
-    // 蒙版选择
+    // 蒙版与Pose选择
     modeBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             // 移除所有激活状态
@@ -95,12 +115,57 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.classList.add('active');
 
             const mode = e.target.getAttribute('data-mode');
+            const tipText = e.target.getAttribute('data-tip');
 
+            // 蒙版显示
             if (mode === 'none') {
                 silhouetteOverlay.classList.add('hidden');
             } else {
                 silhouetteImage.src = silhouettes[mode];
                 silhouetteOverlay.classList.remove('hidden');
+            }
+
+            // 提示语显示
+            if (tipText) {
+                poseTip.querySelector('span').innerText = "💡 提示：" + tipText;
+                poseTip.classList.remove('hidden');
+            } else {
+                poseTip.classList.add('hidden');
+            }
+        });
+    });
+
+    // 滤镜抽屉开关
+    toggleFilterBtn.addEventListener('click', () => {
+        filterDrawer.classList.toggle('hidden');
+    });
+
+    // 滤镜选择
+    filterOpts.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            filterOpts.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            currentFilter = e.target.getAttribute('data-filter');
+            video.style.filter = currentFilter === 'none' ? '' : currentFilter;
+        });
+    });
+
+    // 变焦控制
+    zoomBtns.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            zoomBtns.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            if (currentTrack && currentTrack.applyConstraints) {
+                const zoomValue = Number(e.target.getAttribute('data-zoom'));
+                try {
+                    await currentTrack.applyConstraints({
+                        advanced: [{ zoom: zoomValue }]
+                    });
+                } catch (err) {
+                    console.log('变焦失败或不被支持', err);
+                }
             }
         });
     });
@@ -189,6 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 设置Canvas长宽与视频帧长宽匹配
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+
+        // 如果有滤镜，应用到 Canvas 上下文中
+        if (currentFilter !== 'none') {
+            ctx.filter = currentFilter;
+        } else {
+            ctx.filter = 'none';
+        }
 
         // 将视频画面画入Canvas
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);

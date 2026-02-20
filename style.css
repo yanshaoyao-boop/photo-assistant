@@ -6,14 +6,21 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
+html,
 body {
     background-color: #000;
     color: #fff;
     overflow: hidden;
-    /* 防止页面滚动 */
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    /* 强制绝对撑满，防止部分安卓浏览器地址栏底部遮挡 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
 }
 
 #app-container {
@@ -208,6 +215,116 @@ body {
         opacity: 1;
         transform: scale(1.05);
     }
+}
+
+/* --- 姿势指导语 --- */
+.pose-tip {
+    position: absolute;
+    bottom: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #ffd32a;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    z-index: 90;
+    animation: slide-up 0.5s ease;
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* --- 顶部工具栏与滤镜 --- */
+.top-toolbar {
+    position: absolute;
+    top: max(15px, env(safe-area-inset-top));
+    left: 15px;
+    right: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 80;
+}
+
+.icon-btn {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+}
+
+.zoom-controls {
+    display: flex;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 20px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.zoom-btn {
+    background: transparent;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.zoom-btn.active {
+    background: #ffd32a;
+    color: #000;
+}
+
+.filter-drawer {
+    position: absolute;
+    top: max(60px, calc(env(safe-area-inset-top) + 60px));
+    left: 15px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 80;
+    animation: fade-in 0.3s ease;
+}
+
+.filter-opt {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 15px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-opt.active {
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+    font-weight: bold;
+    border-color: #fff;
 }
 
 /* ========= 底部控制栏 ========= */
