@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchBtn = document.getElementById('camera-switch-btn');
     const gridToggleBtn = document.getElementById('grid-toggle-btn');
     const gridOverlay = document.getElementById('grid-overlay');
-    
+
     const silhouetteOverlay = document.getElementById('silhouette-overlay');
     const silhouetteImage = document.getElementById('silhouette-image');
     const modeBtns = document.querySelectorAll('.mode-btn');
@@ -59,14 +59,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             currentStream = stream;
             video.srcObject = stream;
-            
+
             // Wait for video to load metadata to setup canvas dimensions correctly
             video.onloadedmetadata = () => {
                 video.play();
             };
+            return true;
         } catch (err) {
             console.error('无法访问摄像头:', err);
-            alert('无法连接摄像头，请确保您已授予相机权限，或者当前环境支持HTTPS。');
+            const errorLog = document.getElementById('error-log');
+            if (errorLog) errorLog.innerText = '相机启动失败:\n' + err.name + ' ' + err.message;
+            return false;
         }
     }
 
@@ -76,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ---- UI 交互逻辑 ----
-    
+
     // 九宫格切换
     gridToggleBtn.addEventListener('click', () => {
         gridOverlay.classList.toggle('hidden');
@@ -90,9 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
             modeBtns.forEach(b => b.classList.remove('active'));
             // 激活当前
             e.target.classList.add('active');
-            
+
             const mode = e.target.getAttribute('data-mode');
-            
+
             if (mode === 'none') {
                 silhouetteOverlay.classList.add('hidden');
             } else {
@@ -114,28 +117,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- 水平仪逻辑 ---
         // 我们要避免画面歪斜，也就是关注 roll (左右倾斜角度)
         // 手机横排和竖拍可能会导致获取的值不同。这里假设默认竖屏拍摄。
-        
+
         let tilt = roll; // 竖屏下，手机左右翻滚角度
-        
+
         // 视觉呈现：画一条线。tilt接近0时，线变绿。
-        levelLine.style.transform = \`rotate(\${tilt}deg)\`;
+        levelLine.style.transform = `rotate(${tilt}deg)`;
 
         if (Math.abs(tilt) < 3) {
             levelLine.classList.add('aligned');
-            levelLine.style.background = "#2ed573"; 
+            levelLine.style.background = "#2ed573";
             levelText.textContent = "保持水平 - 完美！";
             levelText.style.color = "#2ed573";
         } else {
             levelLine.classList.remove('aligned');
             levelLine.style.background = "#ff4757";
-            levelText.textContent = \`偏歪 \${Math.abs(Math.round(tilt))}°\`;
+            levelText.textContent = `偏歪 ${Math.abs(Math.round(tilt))}°`;
             levelText.style.color = "#ff4757";
         }
 
         // --- 俯拍小短腿警告 (全身照模式下适用) ---
         // 手机垂直拿时 beta 约 90。如果是俯拍（往下看），beta 会小于80甚至更低。
         const activeMode = document.querySelector('.mode-btn.active').getAttribute('data-mode');
-        
+
         // 为了显腿长，一般来说应该稍微仰拍。如果beta < 75（往地下拍），警告！
         if ((activeMode === 'full' || activeMode === 'half') && pitch > 0 && pitch < 75) {
             angleWarning.classList.remove('hidden');
@@ -145,27 +148,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 申请传感器权限并监听 (iOS 13+ 需要用户行为触发)
-    function setupSensors() {
+    async function setupSensors() {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            // 需要用户点击才能触发
-            DeviceOrientationEvent.requestPermission()
-                .then(permissionState => {
-                    if (permissionState === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation);
-                    }
-                })
-                .catch(console.error);
+            try {
+                const permissionState = await DeviceOrientationEvent.requestPermission();
+                if (permissionState === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                } else {
+                    console.log("传感器权限被拒绝");
+                }
+            } catch (e) {
+                console.log("传感器权限请求出错: ", e);
+            }
         } else {
             // 非 iOS 13+ 或不支持
             window.addEventListener('deviceorientation', handleOrientation);
         }
     }
 
-    // 在第一次点击页面交互时申请权限
-    document.body.addEventListener('click', function initSensorOnce() {
-        setupSensors();
-        document.body.removeEventListener('click', initSensorOnce);
-    }, { once: true });
+    const startBtn = document.getElementById('start-btn');
+    const startScreen = document.getElementById('start-screen');
+
+    if (startBtn) {
+        startBtn.addEventListener('click', async () => {
+            const errorLog = document.getElementById('error-log');
+            errorLog.innerText = "正在请求摄像头权限...";
+
+            await setupSensors();
+            const camReady = await initCamera();
+
+            if (camReady) {
+                startScreen.style.display = 'none';
+            }
+        });
+    }
 
 
     // ---- 拍照及下载逻辑 ----
@@ -173,14 +189,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 设置Canvas长宽与视频帧长宽匹配
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
+
         // 将视频画面画入Canvas
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         // 转为 data URL 显示到预览图
         const dataUrl = canvas.toDataURL('image/png');
         photoPreview.src = dataUrl;
-        
+
         // 显示预览层
         photoPreviewLayer.classList.remove('hidden');
     });
@@ -191,13 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveBtn.addEventListener('click', () => {
         const link = document.createElement('a');
-        link.download = \`老公视角_完美出片_\${new Date().getTime()}.png\`;
+        link.download = `老公视角_完美出片_${new Date().getTime()}.png`;
         link.href = photoPreview.src;
         link.click();
         photoPreviewLayer.classList.add('hidden');
         alert("照片已保存入相册/下载列表！");
     });
 
-    // ---- 启动！ ----
-    initCamera();
+    // ---- 系统通过用户点击启动 ----
 });

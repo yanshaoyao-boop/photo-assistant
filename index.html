@@ -1,17 +1,33 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>老公拍照辅助器 - 拯救废片</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="app-container">
+        <!-- 启动授权屏幕 (必须有用户交互才能在微信等内置浏览器调用摄像头和陀螺仪) -->
+        <div id="start-screen" class="overlay start-screen"
+            style="pointer-events: auto; z-index: 1000; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center;">
+            <div class="start-content" style="text-align: center; color: white;">
+                <h2 style="margin-bottom: 10px;">📸 拍照辅助器</h2>
+                <p style="margin-bottom: 20px; color: #ccc; font-size: 14px;">为保证辅助线与水平仪工作<br>请点击下方按钮并允许权限</p>
+                <button id="start-btn"
+                    style="padding: 12px 30px; font-size: 16px; border-radius: 25px; border: none; background: #ffd32a; color: #000; font-weight: bold;">授权并开启系统</button>
+                <div id="error-log"
+                    style="color: #ff4757; margin-top: 15px; font-size: 14px; max-width: 80%; word-wrap: break-word; margin-left: auto; margin-right: auto;">
+                </div>
+            </div>
+        </div>
+
         <!-- 摄像头画面容器 -->
         <div class="camera-wrapper">
-            <video id="camera-feed" autoplay playsinline></video>
-            
+            <video id="camera-feed" autoplay playsinline webkit-playsinline x5-video-player-type="h5"></video>
+
             <!-- 叠加层：九宫格 -->
             <div id="grid-overlay" class="overlay">
                 <div class="grid-line vertical line-1"></div>
@@ -35,7 +51,7 @@
                 <div class="level-line"></div>
                 <div class="level-text">正在校准...</div>
             </div>
-            
+
             <!-- 闪烁警告框 (防俯拍小短腿) -->
             <div id="angle-warning" class="hidden">
                 <span class="warning-text">⚠️ 手机太往下啦，容易拍出小短腿！稍微往下蹲仰拍！</span>
@@ -50,7 +66,7 @@
                 <button class="mode-btn" data-mode="half">半身(人像)</button>
                 <button class="mode-btn" data-mode="close">特写(五官)</button>
             </div>
-            
+
             <div class="actions">
                 <button id="camera-switch-btn" class="action-btn">🔄 翻转镜头</button>
                 <button id="capture-btn" class="capture-btn">
@@ -68,11 +84,12 @@
                 <button id="save-btn">保存到相册</button>
             </div>
         </div>
-        
+
         <!-- 隐藏的Canvas用于截图 -->
         <canvas id="capture-canvas" class="hidden"></canvas>
     </div>
 
     <script src="app.js"></script>
 </body>
+
 </html>
